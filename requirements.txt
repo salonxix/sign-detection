@@ -1,0 +1,8 @@
+opencv-python==4.10.0.84
+mediapipe==0.10.35
+scikit-learn==1.5.2
+numpy<2
+xgboost==2.1.4
+pyttsx3==2.98
+seaborn==0.13.2
+matplotlib==3.11.0

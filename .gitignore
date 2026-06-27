@@ -1,0 +1,24 @@
+# Virtual environments
+.venv/
+venv/
+.venv1/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+old_data.pickle
+predictions.csv
