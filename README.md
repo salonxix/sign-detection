@@ -1,217 +1,303 @@
-# Real-Time Sign Language Recognition System
+# 🤟 AI-Powered Real-Time Sign Language Recognition System
 
-Recognises **36 classes** — digits **0–9** and letters **A–Z** — from a live webcam feed using MediaPipe hand landmarks and an auto-selected ML classifier.
+## 📌 Project Overview
 
----
+The **AI-Powered Real-Time Sign Language Recognition System** is a computer vision and machine learning application that recognizes hand gestures in real time using a webcam. It leverages **MediaPipe's Hand Landmark Detection** to extract 21 key hand landmarks and applies machine learning models to classify gestures accurately.
 
-## Project Structure
-
-```
-├── collect_imgs.py          # Step 1 – capture training images
-├── create_dataset.py        # Step 2 – extract landmarks → data.pickle
-├── train_classifier.py      # Step 3 – train + evaluate → model.p
-├── inference_classifier.py  # Step 4 – real-time recognition UI
-│
-├── hand_landmarker.task     # MediaPipe model bundle (download once)
-├── data/                    # Training images (36 sub-folders)
-├── metrics/
-│   ├── confusion_matrix.png # Saved after every training run
-│   └── report.json          # Per-model accuracy + per-class F1
-│
-├── data.pickle              # Preprocessed feature matrix
-├── old_data.pickle          # Snapshot used for incremental retraining
-├── model.p                  # Best trained model bundle
-├── label_map.json           # Integer → class name mapping
-└── predictions.csv          # Live prediction log (appended during inference)
-```
+The system performs real-time detection, landmark preprocessing, feature normalization, confidence estimation, and gesture prediction, making it suitable as a foundation for assistive communication technologies.
 
 ---
 
-## Requirements
+# 🎯 Problem Statement
 
-- Python **3.12** (3.10+ works)
-- Webcam
+Millions of people with hearing or speech impairments rely on sign language for communication. However, many people are unable to understand sign language, creating communication barriers.
 
-### Install
-
-```bash
-pip install -r requirements.txt
-```
-
-| Package | Version |
-|---|---|
-| opencv-python | 4.10.0.84 |
-| mediapipe | 0.10.35 |
-| scikit-learn | 1.5.2 |
-| numpy | < 2 |
-| xgboost | 2.1.4 |
-| pyttsx3 | 2.98 |
-| seaborn | 0.13.2 |
-| matplotlib | 3.11.0 |
-
-### Download MediaPipe hand model (one-time)
-
-```bash
-python -c "
-import urllib.request
-urllib.request.urlretrieve(
-    'https://storage.googleapis.com/mediapipe-models/hand_landmarker/'
-    'hand_landmarker/float16/1/hand_landmarker.task',
-    'hand_landmarker.task')
-print('Done')
-"
-```
+This project aims to bridge that gap by converting sign language gestures into machine-recognizable outputs that can later be extended into text and speech.
 
 ---
 
-## Training Pipeline
+# 🎯 Objectives
 
-### Step 1 – Collect images
-
-```bash
-python collect_imgs.py
-```
-
-- Iterates all 36 classes (0–9 then A–Z).
-- Captures **500 images per class** (18 000 total).
-- Re-runs resume from where you left off.
-
-| Key | Action |
-|---|---|
-| Q | Start collecting for current class |
-| S | Skip current class |
-| ESC | Abort session |
-
-### Step 2 – Build dataset
-
-```bash
-python create_dataset.py
-```
-
-Runs MediaPipe on every image and applies the preprocessing pipeline:
-
-| Step | Operation | Why |
-|---|---|---|
-| Translate | Subtract wrist (landmark 0) | Position-independent |
-| Scale | Divide by max abs value → [−1, 1] | Scale-independent |
-| L2-normalize | Divide by Euclidean norm | Orientation-invariant |
-
-Output: `data.pickle` — shape `(N, 42)`.
-
-### Step 3 – Train classifiers
-
-```bash
-# Normal training
-python train_classifier.py
-
-# Retrain after collecting more data — merges with old_data.pickle
-python train_classifier.py --incremental
-
-# Force save even if new model is worse than the saved one
-python train_classifier.py --incremental --force
-```
-
-Three models are trained and compared:
-
-| Classifier | Config |
-|---|---|
-| Random Forest | 200 trees |
-| SVM RBF | C=10, gamma=scale, probability=True |
-| XGBoost | 300 estimators, depth 6 |
-
-Each is evaluated with **5-fold CV + held-out 20% test set**.
-The best-accuracy model is automatically saved to `model.p`.
-
-**Outputs after training:**
-
-| File | Contents |
-|---|---|
-| `model.p` | Best model + LabelEncoder + class list |
-| `label_map.json` | `{"0": "0", "1": "1", … "35": "Z"}` |
-| `metrics/confusion_matrix.png` | Heatmap for the best model |
-| `metrics/report.json` | Per-model CV acc, test acc, per-class precision/recall/F1 |
-| `old_data.pickle` | Snapshot of current data for next incremental run |
-
-The trainer **never downgrades**: if the new model scores lower than the saved one, `model.p` is left untouched (override with `--force`).
-
-### Step 4 – Run inference
-
-```bash
-python inference_classifier.py
-```
+* Detect hands in real time using a webcam.
+* Extract hand landmarks accurately.
+* Train machine learning models for gesture recognition.
+* Compare multiple ML algorithms.
+* Provide smooth and stable predictions.
+* Display prediction confidence.
+* Build a scalable foundation for a complete sign language translator.
 
 ---
 
-## Inference Controls
+# ✨ Key Features
 
-| Key | Action |
-|---|---|
-| SPACE | Accept current prediction → append to sentence |
-| BKSP | Delete last character from sentence |
-| C | Clear sentence |
-| T | Toggle text-to-speech on/off |
-| K | Enter calibration mode |
-| H | Toggle history panel |
-| Q / ESC | Quit |
+## 👋 Real-Time Hand Detection
+
+* Detects hands using a webcam.
+* Uses MediaPipe Tasks API.
+* Supports continuous live recognition.
 
 ---
 
-## Inference Features
+## 🧠 Hand Landmark Extraction
 
-### Confidence threshold
-Predictions below **70%** confidence are shown as **"Unknown"** and cannot be added to the sentence. Adjust `CONFIDENCE_THRESHOLD` at the top of `inference_classifier.py`.
+The system extracts **21 hand landmarks**, including fingertips, joints, and wrist coordinates.
 
-### Top-3 predictions
-The right panel shows the top 3 candidate classes with colour-coded confidence bars:
+Each detected hand is converted into numerical features for machine learning.
 
-| Colour | Confidence |
-|---|---|
-| Green | ≥ 70% |
-| Orange | 40–69% |
-| Red | < 40% |
+---
 
-### Smoothing
-Majority vote over the **last 10 frames** suppresses single-frame flicker. The smoothed label drives the bounding box and the sentence builder.
+## 📐 Landmark Preprocessing
 
-### Sentence builder
-Press SPACE whenever the smoothed label is stable to append a character. Build words and phrases in the on-screen sentence area.
+To improve prediction accuracy, the landmarks undergo preprocessing:
 
-### Text-to-speech
-Press T to toggle. Each accepted character is spoken aloud via `pyttsx3` (Windows SAPI / macOS NSSpeechSynthesizer / Linux espeak). Runs in a background thread so it never blocks the camera feed.
+* Translation (wrist-centered coordinates)
+* Scaling
+* Normalization
+* Feature vector generation
 
-### Calibration mode
-Press K before starting recognition. For each class the system asks you to hold the sign for 60 frames and measures the typical model confidence. This baseline is stored in memory and can be used to spot systematic under-confidence for specific signs. Re-run whenever lighting or hand position changes significantly.
+This makes the model more robust against:
 
-### Prediction history
-The right panel shows the last 20 accepted predictions with timestamps and confidence. Toggle with H.
+* Different hand positions
+* Camera distance
+* Minor rotations
 
-### CSV export
-Every accepted prediction is appended to `predictions.csv`:
+---
+
+## 🤖 Machine Learning Models
+
+The application compares multiple machine learning algorithms:
+
+* Random Forest
+* Support Vector Machine (RBF Kernel)
+* XGBoost
+
+The best-performing model is automatically selected after training.
+
+---
+
+## 📊 Automatic Model Evaluation
+
+During training, the system evaluates each model using:
+
+* Cross Validation
+* Test Accuracy
+* Precision
+* Recall
+* F1 Score
+* Confusion Matrix
+
+The best-performing model is saved for inference.
+
+---
+
+## 🎥 Real-Time Inference
+
+During live prediction, the application provides:
+
+* Bounding box around the hand
+* Predicted gesture
+* Confidence percentage
+* FPS (Frames Per Second)
+* Smoothed prediction using previous frames
+
+---
+
+## 📈 Prediction Smoothing
+
+Instead of relying on a single frame, predictions are averaged across multiple recent frames to reduce flickering and improve stability.
+
+---
+
+## 📂 Dataset Generation
+
+The project includes tools to:
+
+* Capture gesture images
+* Automatically organize them by class
+* Generate training datasets
+* Create serialized feature files for model training
+
+---
+
+# 🛠 Technologies Used
+
+## Programming Language
+
+* Python 3.12
+
+## Computer Vision
+
+* OpenCV
+
+## Hand Tracking
+
+* MediaPipe Tasks API
+
+## Machine Learning
+
+* Random Forest
+* Support Vector Machine (SVM)
+* XGBoost
+* Scikit-learn
+
+## Data Processing
+
+* NumPy
+
+## Visualization
+
+* Matplotlib
+
+---
+
+# 📂 Project Workflow
 
 ```
-timestamp,character,confidence,model
-2025-01-15T14:32:01,A,0.9412,SVM_RBF
-2025-01-15T14:32:03,B,0.8871,SVM_RBF
+Webcam
+   │
+   ▼
+Capture Video Frame
+   │
+   ▼
+MediaPipe Hand Detection
+   │
+   ▼
+Extract 21 Landmarks
+   │
+   ▼
+Preprocessing
+   │
+   ├── Translation
+   ├── Scaling
+   └── Normalization
+   │
+   ▼
+Feature Vector
+   │
+   ▼
+Machine Learning Model
+(Random Forest / SVM / XGBoost)
+   │
+   ▼
+Prediction
+   │
+   ▼
+Confidence Score
+   │
+   ▼
+Display Result
 ```
 
 ---
 
-## Incremental Retraining
+# 📁 Project Files
 
-To add new classes or more data without losing existing samples:
+### `collect_imgs.py`
 
-1. Collect new images: `python collect_imgs.py`
-2. Re-extract features: `python create_dataset.py`
-3. Retrain merging old samples: `python train_classifier.py --incremental`
-
-`old_data.pickle` is updated automatically on every training run so you can chain as many incremental runs as you like.
+Captures images for each gesture class and stores them in the dataset directory.
 
 ---
 
-## Tips
+### `create_dataset.py`
 
-- **Lighting** — avoid strong backlighting; soft frontal light is ideal.
-- **Background** — plain backgrounds help MediaPipe detect hands reliably.
-- **Variety** — slightly vary angle and distance when collecting to improve generalisation.
-- **Balance** — keep roughly equal image counts per class (500 is a good target).
-- **Low confidence?** — run calibration mode (K) and consider collecting more images for the problem classes.
+Processes all collected images, extracts MediaPipe hand landmarks, preprocesses them, and generates `data.pickle`.
+
+---
+
+### `train_classifier.py`
+
+* Loads the dataset.
+* Trains multiple machine learning models.
+* Compares performance.
+* Saves the best model as `model.p`.
+* Generates evaluation metrics.
+
+---
+
+### `inference_classifier.py`
+
+Runs real-time prediction using the trained model.
+
+Displays:
+
+* Predicted label
+* Confidence score
+* FPS
+* Bounding box
+* Hand landmarks
+
+---
+
+### `model.p`
+
+Serialized machine learning model.
+
+---
+
+### `label_map.json`
+
+Maps model outputs to readable class labels.
+
+---
+
+### `metrics/`
+
+Contains:
+
+* Confusion Matrix
+* Training Report
+
+---
+
+# 📊 Current Model Performance
+
+Current Dataset:
+
+* Classes: **0, 1, 2**
+* Images: **300**
+* Features: **42 per sample**
+
+Training Results:
+
+* Random Forest: **100%**
+* SVM: **100%**
+* XGBoost: **100%**
+
+(Current performance is based on the existing 3-class dataset.)
+
+---
+
+# 🚀 Future Scope
+
+The project is designed to be extended with:
+
+* Recognition of digits (0–9)
+* Recognition of alphabet (A–Z)
+* Word formation
+* Sentence formation
+* Text-to-Speech
+* Speech-to-Sign
+* Deep learning models (CNN/LSTM/Transformers)
+* AWS cloud deployment
+* Mobile application
+* Multi-language support
+* User authentication
+* Real-time translation
+
+---
+
+# 👩‍💻 Author
+
+**Saloni Kumari**
+
+B.Tech – Computer Science & Engineering
+
+Amity University Bengaluru
+
+Passionate about Artificial Intelligence, Machine Learning, Computer Vision, Cloud Computing, and Accessible Technology.
+
+---
+
+# 🌟 Conclusion
+
+This project demonstrates the integration of **Computer Vision**, **Machine Learning**, and **Human–Computer Interaction** to build an intelligent real-time sign language recognition system. It serves as a scalable foundation for future assistive technologies capable of enabling more inclusive communication between sign language users and the broader community.
